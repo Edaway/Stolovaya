@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ИС Столовая КГТУ — Панель управления</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Иконки -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #f3f4f7, #dce1e8);
+            font-family: "Segoe UI", sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #2b4c7e;
+        }
+        .navbar-brand, .nav-link, .navbar-text {
+            color: #fff !important;
+        }
+        .welcome {
+            margin-top: 60px;
+            text-align: center;
+        }
+        .role-badge {
+            font-size: 0.9em;
+            background: #007bff;
+            color: #fff;
+            border-radius: 10px;
+            padding: 3px 10px;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: 0.3s;
+            background: white;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .card i {
+            font-size: 40px;
+            color: #2b4c7e;
+        }
+        footer {
+            margin-top: 60px;
+            text-align: center;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <!-- Верхняя панель -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top shadow">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">🍽️ ИС Столовая КГТУ</a>
+            <div class="d-flex">
+                <span class="navbar-text me-3">
+                    Привет, <b>{{ name }}</b> 
+                    <span class="role-badge">{{ role }}</span>
+                </span>
+                <a href="{{ url_for('logout') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-box-arrow-right"></i> Выйти
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Контент -->
+    <div class="container">
+        <div class="welcome">
+            <h2 class="fw-bold">Добро пожаловать в систему столовой КГТУ!</h2>
+            <p class="text-muted">Вы вошли как <b>{{ role }}</b>.</p>
+        </div>
+
+        <div class="row mt-5 g-4 justify-content-center">
+            {% for item, endpoint in menu_items %}
+            <div class="col-10 col-sm-6 col-md-4 col-lg-3">
+                <a href="{{ url_for(endpoint) }}" class="text-decoration-none">
+                    <div class="card text-center p-4">
+                        <div class="mb-3">
+                            {% if "Меню" in item %}<i class="bi bi-egg-fried"></i>{% endif %}
+                            {% if "Корзина" in item %}<i class="bi bi-basket"></i>{% endif %}
+                            {% if "заказы" in item %}<i class="bi bi-list-check"></i>{% endif %}
+                            {% if "История" in item %}<i class="bi bi-clock-history"></i>{% endif %}
+                            {% if "Управление" in item %}<i class="bi bi-gear"></i>{% endif %}
+                            {% if "Аналитика" in item %}<i class="bi bi-graph-up"></i>{% endif %}
+                            {% if "Выход" in item %}<i class="bi bi-door-open"></i>{% endif %}
+                        </div>
+                        <h5 class="fw-semibold">{{ item }}</h5>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <footer class="mt-5">
+        <p>© 2025 ИС «Столовая КГТУ». Все права защищены.</p>
+    </footer>
+
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
