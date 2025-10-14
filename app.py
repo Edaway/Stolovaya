@@ -94,12 +94,6 @@ def orders_page():
 def history():
     return "<h2>📜 История заказов</h2>"
 
-@app.route("/manage_menu")
-def manage_menu():
-    if "user" not in session or users[session["user"]]["role"] != "Administrator":
-        return "<h3>⛔ Доступ запрещён!</h3>"
-    return "<h2>⚙️ Управление меню (доступно только администратору)</h2>"
-
 @app.route("/analytics")
 def analytics():
     if "user" not in session or users[session["user"]]["role"] != "Administrator":
@@ -112,6 +106,42 @@ def logout():
     session.pop("user", None)
     flash("Вы вышли из системы.", "info")
     return redirect(url_for("index"))
+
+# --- Добавим меню блюд для админки ---
+menu_items_list = [
+    {"id": 1, "name": "Пицца Маргарита", "price": 450},
+    {"id": 2, "name": "Суши сет Самурай", "price": 1200},
+    {"id": 3, "name": "Бургер Чеддер", "price": 350},
+]
+
+def get_next_id():
+    return max([item['id'] for item in menu_items_list], default=0) + 1
+
+@app.route("/manage_menu", methods=["GET", "POST"])
+def manage_menu():
+    if "user" not in session or users[session["user"]]["role"] != "Administrator":
+        return "<h3>⛔ Доступ запрещён!</h3>"
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        item_id = request.form.get("id")
+        name = request.form.get("name")
+        price = request.form.get("price")
+
+        if action == "add":
+            menu_items_list.append({"id": get_next_id(), "name": name, "price": float(price)})
+            flash(f"Блюдо '{name}' добавлено!", "success")
+        elif action == "edit":
+            for item in menu_items_list:
+                if str(item["id"]) == item_id:
+                    item["name"] = name
+                    item["price"] = float(price)
+                    flash(f"Блюдо '{name}' обновлено!", "success")
+        elif action == "delete":
+            menu_items_list[:] = [item for item in menu_items_list if str(item["id"]) != item_id]
+            flash("Блюдо удалено!", "info")
+
+    return render_template("manage_menu.html", menu_items=menu_items_list)
 
 # Запуск приложения
 if __name__ == "__main__":

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Управление меню</title>
+</head>
+<body>
+    <h2>⚙️ Управление меню</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul>
+        {% for category, message in messages %}
+          <li><strong>{{ category }}:</strong> {{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <h3>Добавить новое блюдо</h3>
+    <form method="POST">
+        <input type="hidden" name="action" value="add">
+        Название: <input type="text" name="name" required>
+        Цена: <input type="number" name="price" step="0.01" required>
+        <button type="submit">Добавить</button>
+    </form>
+
+    <h3>Существующие блюда</h3>
+    <table border="1">
+        <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Цена</th>
+            <th>Действия</th>
+        </tr>
+        {% for item in menu_items %}
+        <tr>
+            <form method="POST">
+                <td>{{ item.id }}</td>
+                <td><input type="text" name="name" value="{{ item.name }}" required></td>
+                <td><input type="number" name="price" value="{{ item.price }}" step="0.01" required></td>
+                <td>
+                    <input type="hidden" name="id" value="{{ item.id }}">
+                    <button type="submit" name="action" value="edit">Редактировать</button>
+                    <button type="submit" name="action" value="delete">Удалить</button>
+                </td>
+            </form>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <a href="{{ url_for('dashboard') }}">Вернуться на панель</a>
+</body>
+</html>
