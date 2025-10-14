@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Авторизация и регистрация</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background-color: #f6f7fb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+            width: 400px;
+            transition: 0.3s ease;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            border-color: #0078ff;
+            box-shadow: 0 0 4px rgba(0,120,255,0.3);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #0078ff;
+            border: none;
+            color: white;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background-color: #005ecc;
+        }
+
+        .toggle {
+            text-align: center;
+            margin-top: 12px;
+            color: #555;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .toggle:hover {
+            text-decoration: underline;
+        }
+
+        .message {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #d33;
+        }
+
+        .success {
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="form-container">
+        <h2 id="form-title">Вход</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" id="auth-form">
+            <input type="hidden" name="action" id="form-action" value="login">
+            
+            <div id="name-field" style="display: none;">
+                <input type="text" name="name" placeholder="Ваше имя">
+            </div>
+            
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="password" name="password" placeholder="Пароль" required>
+
+            <button type="submit">Войти</button>
+        </form>
+
+        <div class="toggle" id="toggle-text" onclick="toggleForm()">Нет аккаунта? Зарегистрироваться</div>
+    </div>
+
+    <script>
+        const formTitle = document.getElementById("form-title");
+        const formAction = document.getElementById("form-action");
+        const toggleText = document.getElementById("toggle-text");
+        const nameField = document.getElementById("name-field");
+        const button = document.querySelector("button");
+
+        function toggleForm() {
+            if (formAction.value === "login") {
+                formTitle.textContent = "Регистрация";
+                formAction.value = "register";
+                nameField.style.display = "block";
+                button.textContent = "Зарегистрироваться";
+                toggleText.textContent = "Уже есть аккаунт? Войти";
+            } else {
+                formTitle.textContent = "Вход";
+                formAction.value = "login";
+                nameField.style.display = "none";
+                button.textContent = "Войти";
+                toggleText.textContent = "Нет аккаунта? Зарегистрироваться";
+            }
+        }
+    </script>
+</body>
+</html>
