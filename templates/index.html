@@ -2,139 +2,223 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Авторизация и регистрация</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ИС Столовая КГТУ — Вход</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Иконки -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
     <style>
         body {
-            font-family: "Segoe UI", Arial, sans-serif;
-            background-color: #f6f7fb;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: "Segoe UI", sans-serif;
+            min-height: 100vh;
             display: flex;
-            justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            justify-content: center;
         }
-
-        .container {
+        .auth-container {
             background: white;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.1);
-            width: 400px;
-            transition: 0.3s ease;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 450px;
+            backdrop-filter: blur(10px);
         }
-
-        h2 {
+        .logo {
             text-align: center;
-            color: #333;
-            margin-bottom: 25px;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2b4c7e;
         }
-
-        input[type="text"],
-        input[type="email"],
-        input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            outline: none;
-            transition: 0.2s;
+        .form-toggle {
+            display: flex;
+            margin-bottom: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 5px;
         }
-
-        input:focus {
-            border-color: #0078ff;
-            box-shadow: 0 0 4px rgba(0,120,255,0.3);
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #0078ff;
+        .toggle-btn {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
             border: none;
-            color: white;
+            background: transparent;
             border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: 0.2s;
+            font-weight: 500;
+            transition: all 0.3s;
         }
-
-        button:hover {
-            background-color: #005ecc;
+        .toggle-btn.active {
+            background: #2b4c7e;
+            color: white;
         }
-
-        .toggle {
-            text-align: center;
-            margin-top: 12px;
-            color: #555;
-            cursor: pointer;
-            font-size: 14px;
+        .test-accounts {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border-left: 4px solid #2b4c7e;
         }
-
-        .toggle:hover {
-            text-decoration: underline;
+        .form-section {
+            display: none;
         }
-
-        .message {
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 14px;
-            color: #d33;
+        .form-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
         }
-
-        .success {
-            color: #28a745;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2b4c7e, #1e3a5f);
+            border: none;
+            padding: 12px;
+            font-weight: 600;
+            border-radius: 10px;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #1e3a5f, #152642);
+            transform: translateY(-2px);
         }
     </style>
 </head>
 <body>
-    <div class="container" id="form-container">
-        <h2 id="form-title">Вход</h2>
+    <div class="auth-container">
+        <div class="logo">
+            <i class="bi bi-egg-fried me-2"></i>ИС Столовая КГТУ
+        </div>
+
+        <!-- Flash сообщения -->
         {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="message {{ category }}">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
         {% endwith %}
 
-        <form method="POST" id="auth-form">
-            <input type="hidden" name="action" id="form-action" value="login">
+        <!-- Переключатель форм -->
+        <div class="form-toggle">
+            <button class="toggle-btn active" onclick="showForm('login')">Вход</button>
+            <button class="toggle-btn" onclick="showForm('register')">Регистрация</button>
+        </div>
+
+        <!-- Форма входа -->
+        <form method="POST" id="login-form" class="form-section active">
+            <input type="hidden" name="action" value="login">
             
-            <div id="name-field" style="display: none;">
-                <input type="text" name="name" placeholder="Ваше имя">
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Email</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    <input type="email" name="email" class="form-control" placeholder="example@email.com" 
+                           value="admin@stolovaya.kg" required>
+                </div>
             </div>
             
-            <input type="email" name="email" placeholder="Email" required>
-            <input type="password" name="password" placeholder="Пароль" required>
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Пароль</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    <input type="password" name="password" class="form-control" placeholder="Введите пароль" 
+                           value="admin123" required>
+                </div>
+            </div>
 
-            <button type="submit">Войти</button>
+            <button type="submit" class="btn btn-primary w-100 py-2">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Войти в систему
+            </button>
         </form>
 
-        <div class="toggle" id="toggle-text" onclick="toggleForm()">Нет аккаунта? Зарегистрироваться</div>
+        <!-- Форма регистрации -->
+        <form method="POST" id="register-form" class="form-section">
+            <input type="hidden" name="action" value="register">
+            
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Ваше имя</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                    <input type="text" name="name" class="form-control" placeholder="Введите ваше имя" required>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Email</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    <input type="email" name="email" class="form-control" placeholder="example@email.com" required>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Пароль</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    <input type="password" name="password" class="form-control" placeholder="Придумайте пароль" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2">
+                <i class="bi bi-person-plus me-2"></i>Зарегистрироваться
+            </button>
+        </form>
+
+        <!-- Тестовые аккаунты -->
+        <div class="test-accounts">
+            <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2"></i>Тестовые аккаунты</h6>
+            <div class="row">
+                <div class="col-12 mb-2">
+                    <small class="text-muted">
+                        <i class="bi bi-crown me-1"></i><strong>Администратор:</strong><br>
+                        admin@stolovaya.kg / admin123
+                    </small>
+                </div>
+                <div class="col-12">
+                    <small class="text-muted">
+                        <i class="bi bi-person me-1"></i><strong>Пользователь:</strong><br>
+                        Зарегистрируйтесь через форму выше
+                    </small>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        const formTitle = document.getElementById("form-title");
-        const formAction = document.getElementById("form-action");
-        const toggleText = document.getElementById("toggle-text");
-        const nameField = document.getElementById("name-field");
-        const button = document.querySelector("button");
+        function showForm(formType) {
+            // Обновляем активные кнопки
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
 
-        function toggleForm() {
-            if (formAction.value === "login") {
-                formTitle.textContent = "Регистрация";
-                formAction.value = "register";
-                nameField.style.display = "block";
-                button.textContent = "Зарегистрироваться";
-                toggleText.textContent = "Уже есть аккаунт? Войти";
-            } else {
-                formTitle.textContent = "Вход";
-                formAction.value = "login";
-                nameField.style.display = "none";
-                button.textContent = "Войти";
-                toggleText.textContent = "Нет аккаунта? Зарегистрироваться";
-            }
+            // Показываем нужную форму
+            document.getElementById('login-form').classList.remove('active');
+            document.getElementById('register-form').classList.remove('active');
+            document.getElementById(formType + '-form').classList.add('active');
         }
+
+        // Автоматически показываем форму регистрации если есть сообщение об успешной регистрации
+        document.addEventListener('DOMContentLoaded', function() {
+            const successMessages = document.querySelectorAll('.alert-success');
+            successMessages.forEach(msg => {
+                if (msg.textContent.includes('Регистрация прошла успешно')) {
+                    showForm('login');
+                }
+            });
+        });
     </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

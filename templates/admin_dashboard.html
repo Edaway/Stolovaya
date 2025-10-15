@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ИС Столовая КГТУ — Админ-панель</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Иконки -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: "Segoe UI", sans-serif;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: rgba(43, 76, 126, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .navbar-brand, .nav-link, .navbar-text {
+            color: #fff !important;
+        }
+        .admin-container {
+            margin-top: 80px;
+            margin-bottom: 40px;
+        }
+        .welcome-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            padding: 2.5rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            border-left: 5px solid #2b4c7e;
+        }
+        .admin-badge {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            padding: 2rem;
+            text-align: center;
+            height: 100%;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            border-color: #2b4c7e;
+        }
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #2b4c7e, #1e3a5f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .feature-title {
+            font-weight: 700;
+            color: #2b4c7e;
+            margin-bottom: 1rem;
+        }
+        .feature-description {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+        .btn-admin {
+            background: linear-gradient(135deg, #2b4c7e, #1e3a5f);
+            border: none;
+            color: white;
+            padding: 10px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-admin:hover {
+            background: linear-gradient(135deg, #1e3a5f, #152642);
+            transform: translateY(-2px);
+            color: white;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .stats-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <!-- Верхняя панель -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="bi bi-egg-fried me-2"></i>ИС Столовая КГТУ
+            </a>
+            <div class="d-flex align-items-center">
+                <span class="navbar-text me-3">
+                    <i class="bi bi-person-circle me-2"></i>
+                    <b>{{ name }}</b>
+                    <span class="admin-badge ms-2">👑 АДМИНИСТРАТОР</span>
+                </span>
+                <a href="{{ url_for('logout') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-box-arrow-right me-1"></i>Выйти
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <div class="container admin-container">
+        <!-- Приветственная карточка -->
+        <div class="welcome-card">
+            <div class="admin-badge">
+                <i class="bi bi-shield-check me-2"></i>АДМИНИСТРАТИВНАЯ ПАНЕЛЬ
+            </div>
+            <h1 class="fw-bold mb-3">Добро пожаловать, {{ name }}! 👑</h1>
+            <p class="text-muted mb-4">Управляйте системой столовой КГТУ с помощью инструментов ниже</p>
+            
+            <!-- Статистика -->
+            <div class="row justify-content-center mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-number">{{ menu_items_list|length }}</div>
+                        <div class="stats-label">Блюд в меню</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-number">{{ orders_list|length }}</div>
+                        <div class="stats-label">Всего заказов</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-number">{{ users|length }}</div>
+                        <div class="stats-label">Пользователей</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Функции админ-панели -->
+        <div class="row g-4">
+            <!-- Управление меню -->
+            <div class="col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-gear"></i>
+                    </div>
+                    <h4 class="feature-title">Управление меню</h4>
+                    <p class="feature-description">
+                        Добавляйте, редактируйте и удаляйте блюда в меню столовой. 
+                        Контролируйте цены и доступность позиций.
+                    </p>
+                    <a href="{{ url_for('manage_menu') }}" class="btn btn-admin">
+                        <i class="bi bi-pencil-square me-2"></i>Перейти к управлению
+                    </a>
+                </div>
+            </div>
+
+            <!-- Аналитика -->
+            <div class="col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <h4 class="feature-title">Аналитика блюд</h4>
+                    <p class="feature-description">
+                        Просматривайте статистику по популярности блюд, 
+                        анализируйте продажи и оптимизируйте ассортимент.
+                    </p>
+                    <a href="{{ url_for('analytics') }}" class="btn btn-admin">
+                        <i class="bi bi-bar-chart me-2"></i>Смотреть аналитику
+                    </a>
+                </div>
+            </div>
+
+            <!-- Управление заказами -->
+            <div class="col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-list-check"></i>
+                    </div>
+                    <h4 class="feature-title">Управление заказами</h4>
+                    <p class="feature-description">
+                        Отслеживайте текущие заказы, управляйте статусами 
+                        и контролируйте процесс выполнения.
+                    </p>
+                    <a href="{{ url_for('orders_page') }}" class="btn btn-admin">
+                        <i class="bi bi-eye me-2"></i>Просмотреть заказы
+                    </a>
+                </div>
+            </div>
+
+            <!-- Пользователи -->
+            <div class="col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <h4 class="feature-title">Управление пользователями</h4>
+                    <p class="feature-description">
+                        Просматривайте список пользователей, 
+                        управляйте ролями и доступом к системе.
+                    </p>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-admin">
+                        <i class="bi bi-person-gear me-2"></i>Управление доступом
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Быстрые действия -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <div class="welcome-card">
+                    <h5 class="fw-bold mb-3">⚡ Быстрые действия</h5>
+                    <div class="d-flex gap-3 flex-wrap justify-content-center">
+                        <a href="{{ url_for('manage_menu') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Добавить блюдо
+                        </a>
+                        <a href="{{ url_for('orders_page') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-clock-history me-2"></i>Последние заказы
+                        </a>
+                        <a href="{{ url_for('analytics') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-graph-up-arrow me-2"></i>Статистика сегодня
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Футер -->
+    <footer class="text-center text-white mt-5 pb-3">
+        <small>© 2025 ИС «Столовая КГТУ». Административная панель</small>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

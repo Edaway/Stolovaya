@@ -19,7 +19,6 @@
                 <div class="card shadow-sm border-success">
                     <div class="card-body text-center">
                         <h5 class="card-title">{{ o.dish }}</h5>
-                        <p class="card-text text-muted mb-2">Количество: {{ o.quantity }}</p>
                         <span class="badge bg-success">{{ o.status }}</span>
                     </div>
                 </div>
@@ -39,7 +38,6 @@
                 <div class="card shadow-sm border-secondary">
                     <div class="card-body text-center">
                         <h5 class="card-title">{{ o.dish }}</h5>
-                        <p class="card-text text-muted mb-2">Количество: {{ o.quantity }}</p>
                         <span class="badge bg-secondary">{{ o.status }}</span>
                     </div>
                 </div>
@@ -52,6 +50,7 @@
 
     <div class="text-center mt-5">
         <a href="{{ url_for('dashboard') }}" class="btn btn-outline-dark px-4">← Назад в личный кабинет</a>
+
     </div>
 </div>
 
