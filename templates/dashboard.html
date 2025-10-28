@@ -24,7 +24,7 @@
             color: #fff !important;
         }
         .welcome {
-            margin-top: 60px;
+            margin-top: 80px;
             text-align: center;
         }
         .role-badge {
@@ -40,6 +40,7 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             transition: 0.3s;
             background: white;
+            margin-bottom: 20px;
         }
         .card:hover {
             transform: translateY(-5px);
@@ -48,6 +49,25 @@
         .card i {
             font-size: 40px;
             color: #2b4c7e;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .stats-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .favorite-item, .cart-item {
+            border-left: 4px solid #2b4c7e;
+            padding-left: 15px;
         }
         footer {
             margin-top: 60px;
@@ -80,6 +100,103 @@
             <p class="text-muted">Вы вошли как <b>{{ role }}</b>.</p>
         </div>
 
+        <!-- Статистика -->
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="stats-card">
+                    <div class="stats-number">{{ favorite_items|length }}</div>
+                    <div class="stats-label">Избранных блюд</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stats-card">
+                    <div class="stats-number">{{ cart_items|length }}</div>
+                    <div class="stats-label">В корзине</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stats-card">
+                    <div class="stats-number">{{ total_price }} сом</div>
+                    <div class="stats-label">Сумма корзины</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Избранные блюда -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card p-4">
+                    <h4><i class="bi bi-heart me-2"></i>Ваши избранные блюда</h4>
+                    {% if favorite_items %}
+                        <div class="row mt-3">
+                            {% for item in favorite_items %}
+                            <div class="col-md-6 mb-3">
+                                <div class="favorite-item">
+                                    <h6>{{ item.name }}</h6>
+                                    <p class="text-muted mb-1">{{ item.description }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold text-primary">{{ item.price }} сом</span>
+                                        <a href="{{ url_for('toggle_favorite', item_id=item.id) }}" class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-heartbreak"></i> Удалить
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">У вас пока нет избранных блюд.</p>
+                        <a href="{{ url_for('menu') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Добавить из меню
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Корзина -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card p-4">
+                    <h4><i class="bi bi-cart me-2"></i>Ваша корзина</h4>
+                    {% if cart_items %}
+                        <div class="row mt-3">
+                            {% for item in cart_items %}
+                            <div class="col-md-6 mb-3">
+                                <div class="cart-item">
+                                    <h6>{{ item.name }}</h6>
+                                    <p class="text-muted mb-1">Количество: {{ item.quantity }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold text-primary">{{ item.total }} сом</span>
+                                        <a href="{{ url_for('remove_from_cart', item_id=item.id) }}" class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-trash"></i> Удалить
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Итого: {{ total_price }} сом</h5>
+                                    <a href="{{ url_for('cart') }}" class="btn btn-primary">
+                                        <i class="bi bi-cart-check me-2"></i>Перейти к корзине
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Ваша корзина пуста.</p>
+                        <a href="{{ url_for('menu') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Добавить из меню
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Меню навигации -->
         <div class="row mt-5 g-4 justify-content-center">
             {% for item, endpoint in menu_items %}
             <div class="col-10 col-sm-6 col-md-4 col-lg-3">
