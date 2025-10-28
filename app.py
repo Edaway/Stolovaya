@@ -1,12 +1,24 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask_login import current_user
 
+# --- Инициализация Flask ---
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-# База пользователей
+# --- База пользователей ---
 users = {
-    "admin@stolovaya.kg": {"name": "Главный админ", "password": "admin123", "role": "Administrator"}
+    "admin@stolovaya.kg": {
+        "name": "Главный админ",
+        "password": "admin123",
+        "role": "Administrator"
+    },
+    "customer@gmail.com": {
+        "name": "Покупатель",
+        "password": "123",
+        "role": "Customer"
+    }
 }
+
 
 # Пример заказов
 orders_list = [
@@ -30,6 +42,10 @@ favorites = {}
 
 # Корзины пользователей
 carts = {}
+# Активные и завершённые заказы
+active_orders = []
+completed_orders = []
+
 
 def get_next_id():
     return max([item['id'] for item in menu_items_list], default=0) + 1
@@ -266,24 +282,144 @@ def update_cart(item_id):
     return redirect(url_for('cart'))
 
 # --- ОФОРМЛЕНИЕ ЗАКАЗА ---
-@app.route("/checkout")
+# --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: СОЗДАТЬ ЗАКАЗ ИЗ КОРЗИНЫ ПОЛЬЗОВАТЕЛЯ ---
+def create_order_from_cart(user_email):
+    user_cart = carts.get(user_email, {})
+    if not user_cart:
+        return None
+
+    order = {
+        "id": len(active_orders) + len(completed_orders) + 1,
+        "user": user_email,
+        "items": [],
+        "total": 0,
+        "status": "Активен"
+    }
+
+    total_price = 0
+    for item_id, quantity in user_cart.items():
+        # находим описание блюда в меню
+        menu_item = next((it for it in menu_items_list if it["id"] == item_id), None)
+        if not menu_item:
+            continue
+        item_total = menu_item["price"] * quantity
+        order["items"].append({
+            "id": menu_item["id"],
+            "name": menu_item["name"],
+            "quantity": quantity,
+            "price": menu_item["price"],
+            "total": item_total
+        })
+        total_price += item_total
+
+    order["total"] = total_price
+    active_orders.append(order)
+    # очищаем корзину пользователя
+    carts[user_email] = {}
+    return order["id"]
+
+
+# --- ОФОРМЛЕНИЕ ЗАКАЗА (checkout) - заменяет старую версию ---
+@app.route('/checkout', methods=['POST'])
 def checkout():
+    # используем session['user'] (в твоём файле login кладёт email в session['user'])
+    user_email = session.get('user')
+    if not user_email:
+        flash('Сначала войдите в систему!', 'error')
+        return redirect(url_for('index'))
+
+    order_id = create_order_from_cart(user_email)
+    if order_id is None:
+        flash('Корзина пуста!', 'error')
+        return redirect(url_for('cart'))
+
+    flash(f'✅ Заказ #{order_id} успешно оформлен и отправлен в активные!', 'success')
+    return redirect(url_for('orders_page'))
+
+
+
+# --- ПОДТВЕРЖДЕНИЕ ЗАКАЗА (из корзины -> активные заказы) ---
+@app.route("/confirm_order", methods=["POST"])
+def confirm_order():
     if "user" not in session:
         flash("Сначала войдите в систему!", "error")
         return redirect(url_for("index"))
-    
+
     user_email = session["user"]
-    
-    if user_email not in carts or not carts[user_email]:
+    user_cart = carts.get(user_email, {})
+
+    if not user_cart:
         flash("Корзина пуста!", "error")
-        return redirect(url_for('cart'))
-    
-    # Здесь можно добавить логику оформления заказа
-    # Пока просто очищаем корзину
-    carts[user_email] = {}
-    
-    flash("Заказ успешно оформлен! Ожидайте доставку.", "success")
-    return redirect(url_for('dashboard'))
+        return redirect(url_for("cart"))
+
+    # Создаём заказ
+    order = {
+        "id": len(active_orders) + len(completed_orders) + 1,
+        "user": user_email,
+        "items": [],
+        "total": 0,
+        "status": "Активен"
+    }
+
+    total_price = 0
+    for item_id, quantity in user_cart.items():
+        for item in menu_items_list:
+            if item["id"] == item_id:
+                order["items"].append({
+                    "name": item["name"],
+                    "quantity": quantity,
+                    "price": item["price"],
+                    "total": item["price"] * quantity
+                })
+                total_price += item["price"] * quantity
+                break
+
+    order["total"] = total_price
+    active_orders.append(order)
+    carts[user_email] = {}  # очищаем корзину
+
+    flash("✅ Заказ подтверждён и отправлен в активные!", "success")
+    return redirect(url_for("orders_page"))
+
+
+# --- БЫСТРАЯ ПРОДАЖА (без корзины) ---
+@app.route("/quick_sale", methods=["POST"])
+def quick_sale():
+    if "user" not in session:
+        flash("Сначала войдите в систему!", "error")
+        return redirect(url_for("index"))
+
+    name = request.form.get("name")
+    price = float(request.form.get("price", 0))
+
+    if not name or price <= 0:
+        flash("Некорректные данные для быстрой продажи!", "error")
+        return redirect(url_for("menu"))
+
+    order = {
+        "id": len(active_orders) + len(completed_orders) + 1,
+        "user": session["user"],
+        "items": [{"name": name, "quantity": 1, "price": price, "total": price}],
+        "total": price,
+        "status": "Активен"
+    }
+
+    active_orders.append(order)
+    flash(f"💸 Быстрая продажа: {name} ({price} сом) добавлена в активные заказы!", "success")
+    return redirect(url_for("orders_page"))
+  
+  # --- ВЫДАЧА ЗАКАЗА ---
+@app.route("/complete/<int:order_id>")
+def complete(order_id):
+    for order in active_orders:
+        if order["id"] == order_id:
+            order["status"] = "Доставлен"
+            completed_orders.append(order)
+            active_orders.remove(order)
+            flash(f"🚚 Заказ #{order_id} отмечен как доставленный!", "info")
+            break
+    return redirect(url_for("orders_page"))
+
 
 # --- УПРАВЛЕНИЕ МЕНЮ ---
 @app.route("/manage_menu", methods=["GET", "POST"])
@@ -332,10 +468,17 @@ def orders_page():
     if "user" not in session:
         return redirect(url_for("index"))
 
-    active_orders = [o for o in orders_list if o["status"] == "Активен"]
-    completed_orders = [o for o in orders_list if o["status"] != "Активен"]
+    user_email = session["user"]
+    current_user = users[user_email]  # достаём объект пользователя
 
-    return render_template("orders.html", active_orders=active_orders, completed_orders=completed_orders)
+    return render_template(
+        "orders.html",
+        active_orders=active_orders,
+        completed_orders=completed_orders,
+        current_user=current_user  # <--- передаём сюда
+    )
+
+
 
 @app.route("/history")
 def history():

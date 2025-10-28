@@ -233,10 +233,21 @@
                         
                         <!-- Кнопки действий -->
                         <div class="d-grid gap-2">
-                            <a href="{{ url_for('add_to_cart', item_id=item.id) }}" class="btn btn-primary w-100">
-                                <i class="bi bi-cart-plus me-2"></i>В корзину
-                            </a>
+                        <!-- Добавить в корзину -->
+                        <a href="{{ url_for('add_to_cart', item_id=item.id) }}" class="btn btn-primary w-100">
+                            <i class="bi bi-cart-plus me-2"></i>В корзину
+                        </a>
+
+                        <!-- Быстрая продажа -->
+                        <form method="POST" action="{{ url_for('quick_sale') }}">
+                            <input type="hidden" name="name" value="{{ item.name }}">
+                            <input type="hidden" name="price" value="{{ item.price }}">
+                            <button type="submit" class="btn btn-warning w-100">
+                                <i class="bi bi-lightning-charge me-2"></i>Быстрая продажа
+                            </button>
+                        </form>
                         </div>
+
                     </div>
                 </div>
                 {% endfor %}
