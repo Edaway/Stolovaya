@@ -19,15 +19,14 @@ users = {
     }
 }
 
-
-# Пример заказов
+# --- Пример заказов ---
 orders_list = [
     {"id": 1, "dish": "Пицца Маргарита", "status": "Активен"},
     {"id": 2, "dish": "Суши сет Самурай", "status": "Активен"},
     {"id": 3, "dish": "Бургер Чеддер", "status": "Доставлен"},
 ]
 
-# Меню блюд с категориями (в сомах)
+# --- Меню блюд с категориями (в сомах) ---
 menu_items_list = [
     {"id": 1, "name": "Пицца Маргарита", "price": 450, "category": "Пицца", "image": "🍕", "description": "Классическая пицца с томатным соусом и моцареллой"},
     {"id": 2, "name": "Суши сет Самурай", "price": 1200, "category": "Суши", "image": "🍣", "description": "Ассорти из свежих суши и роллов"},
@@ -37,21 +36,21 @@ menu_items_list = [
     {"id": 6, "name": "Кола", "price": 120, "category": "Напитки", "image": "🥤", "description": "Освежающий газированный напиток"},
 ]
 
-# Избранное пользователей
-favorites = {}
-
-# Корзины пользователей
-carts = {}
-# Активные и завершённые заказы
-active_orders = []
-completed_orders = []
+# --- Хранилища данных ---
+favorites = {}      # Избранное пользователей
+carts = {}          # Корзины пользователей
+active_orders = []  # Активные заказы
+completed_orders = []  # Завершённые заказы
 
 
+# --- Вспомогательные функции ---
 def get_next_id():
     return max([item['id'] for item in menu_items_list], default=0) + 1
 
+
 def get_categories():
     return list(set(item['category'] for item in menu_items_list))
+
 
 # --- ГЛАВНАЯ СТРАНИЦА ---
 @app.route("/", methods=["GET", "POST"])
@@ -85,6 +84,7 @@ def index():
 
     return render_template("index.html")
 
+
 # --- ЛИЧНЫЙ КАБИНЕТ ---
 @app.route("/dashboard")
 def dashboard():
@@ -94,16 +94,16 @@ def dashboard():
 
     email = session["user"]
     user = users[email]
-    
-    # Получаем избранное пользователя
+
+    # Избранное
     user_favorites = favorites.get(email, [])
     favorite_items = [item for item in menu_items_list if item["id"] in user_favorites]
-    
-    # Получаем корзину пользователя
+
+    # Корзина
     user_cart = carts.get(email, {})
     cart_items = []
     total_price = 0
-    
+
     for item_id, quantity in user_cart.items():
         for item in menu_items_list:
             if item["id"] == item_id:
@@ -113,7 +113,7 @@ def dashboard():
                 cart_items.append(cart_item)
                 total_price += cart_item["total"]
                 break
-    
+
     menu_items = [
         ("Меню блюд", "menu"),
         ("Корзина", "cart"),
@@ -122,13 +122,16 @@ def dashboard():
         ("Выход", "logout")
     ]
 
-    return render_template("dashboard.html", 
-                         name=user["name"], 
-                         role=user["role"], 
-                         menu_items=menu_items,
-                         favorite_items=favorite_items,
-                         cart_items=cart_items,
-                         total_price=total_price)
+    return render_template(
+        "dashboard.html",
+        name=user["name"],
+        role=user["role"],
+        menu_items=menu_items,
+        favorite_items=favorite_items,
+        cart_items=cart_items,
+        total_price=total_price
+    )
+
 
 # --- АДМИН-ПАНЕЛЬ ---
 @app.route("/admin_dashboard")
@@ -140,12 +143,16 @@ def admin_dashboard():
     if user["role"] != "Administrator":
         return redirect(url_for("dashboard"))
 
-    return render_template("admin_dashboard.html", name=user["name"], 
-                         menu_items_list=menu_items_list, 
-                         orders_list=orders_list, 
-                         users=users)
+    return render_template(
+        "admin_dashboard.html",
+        name=user["name"],
+        menu_items_list=menu_items_list,
+        orders_list=orders_list,
+        users=users
+    )
 
-# --- МЕНЮ БЛЮД С ФИЛЬТРАЦИЕЙ И ПОИСКОМ ---
+
+# --- МЕНЮ БЛЮД ---
 @app.route("/menu")
 def menu():
     if "user" not in session:
@@ -154,49 +161,50 @@ def menu():
 
     category = request.args.get('category', '')
     search = request.args.get('search', '')
-    
-    # Фильтрация блюд
+
     filtered_items = menu_items_list
-    
     if category:
         filtered_items = [item for item in filtered_items if item['category'] == category]
-    
     if search:
         search_lower = search.lower()
-        filtered_items = [item for item in filtered_items if search_lower in item['name'].lower() or search_lower in item['description'].lower()]
-    
-    # Получаем избранное пользователя
-    user_favorites = favorites.get(session["user"], [])
-    
-    categories = get_categories()
-    
-    return render_template("menu.html", 
-                         menu_items=filtered_items,
-                         categories=categories,
-                         selected_category=category,
-                         search_query=search,
-                         user_favorites=user_favorites)
+        filtered_items = [
+            item for item in filtered_items
+            if search_lower in item['name'].lower() or search_lower in item['description'].lower()
+        ]
 
-# --- ДОБАВЛЕНИЕ/УДАЛЕНИЕ ИЗ ИЗБРАННОГО ---
+    user_favorites = favorites.get(session["user"], [])
+    categories = get_categories()
+
+    return render_template(
+        "menu.html",
+        menu_items=filtered_items,
+        categories=categories,
+        selected_category=category,
+        search_query=search,
+        user_favorites=user_favorites
+    )
+
+
+# --- ИЗБРАННОЕ ---
 @app.route("/toggle_favorite/<int:item_id>")
 def toggle_favorite(item_id):
     if "user" not in session:
         flash("Сначала войдите в систему!", "error")
         return redirect(url_for("index"))
-    
+
     user_email = session["user"]
-    
     if user_email not in favorites:
         favorites[user_email] = []
-    
+
     if item_id in favorites[user_email]:
         favorites[user_email].remove(item_id)
         flash("Блюдо удалено из избранного", "info")
     else:
         favorites[user_email].append(item_id)
         flash("Блюдо добавлено в избранное!", "success")
-    
+
     return redirect(request.referrer or url_for('menu'))
+
 
 # --- КОРЗИНА ---
 @app.route("/cart")
@@ -204,13 +212,12 @@ def cart():
     if "user" not in session:
         flash("Сначала войдите в систему!", "error")
         return redirect(url_for("index"))
-    
+
     user_email = session["user"]
     user_cart = carts.get(user_email, {})
-    
     cart_items = []
     total_price = 0
-    
+
     for item_id, quantity in user_cart.items():
         for item in menu_items_list:
             if item["id"] == item_id:
@@ -220,10 +227,9 @@ def cart():
                 cart_items.append(cart_item)
                 total_price += cart_item["total"]
                 break
-    
-    return render_template("cart.html", 
-                         cart_items=cart_items, 
-                         total_price=total_price)
+
+    return render_template("cart.html", cart_items=cart_items, total_price=total_price)
+
 
 # --- ДОБАВЛЕНИЕ В КОРЗИНУ ---
 @app.route("/add_to_cart/<int:item_id>", methods=["GET", "POST"])
@@ -231,21 +237,19 @@ def add_to_cart(item_id):
     if "user" not in session:
         flash("Сначала войдите в систему!", "error")
         return redirect(url_for("index"))
-    
+
     user_email = session["user"]
-    
     if user_email not in carts:
         carts[user_email] = {}
-    
+
     if item_id in carts[user_email]:
         carts[user_email][item_id] += 1
     else:
         carts[user_email][item_id] = 1
-    
-    # Находим название блюда для сообщения
+
     item_name = next((item["name"] for item in menu_items_list if item["id"] == item_id), "Блюдо")
     flash(f"'{item_name}' добавлено в корзину!", "success")
-    
+
     return redirect(request.referrer or url_for('menu'))
 
 # --- УДАЛЕНИЕ ИЗ КОРЗИНЫ ---
@@ -254,14 +258,14 @@ def remove_from_cart(item_id):
     if "user" not in session:
         flash("Сначала войдите в систему!", "error")
         return redirect(url_for("index"))
-    
+
     user_email = session["user"]
-    
     if user_email in carts and item_id in carts[user_email]:
         del carts[user_email][item_id]
         flash("Блюдо удалено из корзины", "info")
-    
+
     return redirect(url_for('cart'))
+
 
 # --- ОБНОВЛЕНИЕ КОЛИЧЕСТВА В КОРЗИНЕ ---
 @app.route("/update_cart/<int:item_id>", methods=["POST"])
@@ -269,20 +273,20 @@ def update_cart(item_id):
     if "user" not in session:
         flash("Сначала войдите в систему!", "error")
         return redirect(url_for("index"))
-    
+
     user_email = session["user"]
     quantity = request.form.get("quantity", type=int)
-    
+
     if user_email in carts and item_id in carts[user_email]:
         if quantity > 0:
             carts[user_email][item_id] = quantity
         else:
             del carts[user_email][item_id]
-    
+
     return redirect(url_for('cart'))
 
-# --- ОФОРМЛЕНИЕ ЗАКАЗА ---
-# --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: СОЗДАТЬ ЗАКАЗ ИЗ КОРЗИНЫ ПОЛЬЗОВАТЕЛЯ ---
+
+# --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: СОЗДАТЬ ЗАКАЗ ИЗ КОРЗИНЫ ---
 def create_order_from_cart(user_email):
     user_cart = carts.get(user_email, {})
     if not user_cart:
@@ -298,10 +302,10 @@ def create_order_from_cart(user_email):
 
     total_price = 0
     for item_id, quantity in user_cart.items():
-        # находим описание блюда в меню
         menu_item = next((it for it in menu_items_list if it["id"] == item_id), None)
         if not menu_item:
             continue
+
         item_total = menu_item["price"] * quantity
         order["items"].append({
             "id": menu_item["id"],
@@ -314,15 +318,14 @@ def create_order_from_cart(user_email):
 
     order["total"] = total_price
     active_orders.append(order)
-    # очищаем корзину пользователя
-    carts[user_email] = {}
+    carts[user_email] = {}  # очищаем корзину
+
     return order["id"]
 
 
-# --- ОФОРМЛЕНИЕ ЗАКАЗА (checkout) - заменяет старую версию ---
+# --- ОФОРМЛЕНИЕ ЗАКАЗА ---
 @app.route('/checkout', methods=['POST'])
 def checkout():
-    # используем session['user'] (в твоём файле login кладёт email в session['user'])
     user_email = session.get('user')
     if not user_email:
         flash('Сначала войдите в систему!', 'error')
@@ -337,8 +340,7 @@ def checkout():
     return redirect(url_for('orders_page'))
 
 
-
-# --- ПОДТВЕРЖДЕНИЕ ЗАКАЗА (из корзины -> активные заказы) ---
+# --- ПОДТВЕРЖДЕНИЕ ЗАКАЗА ---
 @app.route("/confirm_order", methods=["POST"])
 def confirm_order():
     if "user" not in session:
@@ -347,12 +349,10 @@ def confirm_order():
 
     user_email = session["user"]
     user_cart = carts.get(user_email, {})
-
     if not user_cart:
         flash("Корзина пуста!", "error")
         return redirect(url_for("cart"))
 
-    # Создаём заказ
     order = {
         "id": len(active_orders) + len(completed_orders) + 1,
         "user": user_email,
@@ -376,13 +376,12 @@ def confirm_order():
 
     order["total"] = total_price
     active_orders.append(order)
-    carts[user_email] = {}  # очищаем корзину
-
+    carts[user_email] = {}
     flash("✅ Заказ подтверждён и отправлен в активные!", "success")
     return redirect(url_for("orders_page"))
 
 
-# --- БЫСТРАЯ ПРОДАЖА (без корзины) ---
+# --- БЫСТРАЯ ПРОДАЖА ---
 @app.route("/quick_sale", methods=["POST"])
 def quick_sale():
     if "user" not in session:
@@ -407,8 +406,9 @@ def quick_sale():
     active_orders.append(order)
     flash(f"💸 Быстрая продажа: {name} ({price} сом) добавлена в активные заказы!", "success")
     return redirect(url_for("orders_page"))
-  
-  # --- ВЫДАЧА ЗАКАЗА ---
+
+
+# --- ВЫДАЧА ЗАКАЗА ---
 @app.route("/complete/<int:order_id>")
 def complete(order_id):
     for order in active_orders:
@@ -418,6 +418,7 @@ def complete(order_id):
             active_orders.remove(order)
             flash(f"🚚 Заказ #{order_id} отмечен как доставленный!", "info")
             break
+
     return redirect(url_for("orders_page"))
 
 
@@ -438,8 +439,8 @@ def manage_menu():
 
         if action == "add":
             new_item = {
-                "id": get_next_id(), 
-                "name": name, 
+                "id": get_next_id(),
+                "name": name,
                 "price": float(price),
                 "category": category,
                 "image": "🍽️",
@@ -447,6 +448,7 @@ def manage_menu():
             }
             menu_items_list.append(new_item)
             flash(f"Блюдо '{name}' добавлено!", "success")
+
         elif action == "edit":
             for item in menu_items_list:
                 if str(item["id"]) == item_id:
@@ -455,6 +457,7 @@ def manage_menu():
                     item["category"] = category
                     item["description"] = description
                     flash(f"Блюдо '{name}' обновлено!", "success")
+
         elif action == "delete":
             menu_items_list[:] = [item for item in menu_items_list if str(item["id"]) != item_id]
             flash("Блюдо удалено!", "info")
@@ -462,34 +465,37 @@ def manage_menu():
     categories = get_categories()
     return render_template("manage_menu.html", menu_items=menu_items_list, categories=categories)
 
-# --- ОСТАЛЬНЫЕ СТРАНИЦЫ ---
+
+# --- СТРАНИЦЫ ЗАКАЗОВ ---
 @app.route("/orders")
 def orders_page():
     if "user" not in session:
         return redirect(url_for("index"))
 
     user_email = session["user"]
-    current_user = users[user_email]  # достаём объект пользователя
+    current_user_data = users[user_email]
 
     return render_template(
         "orders.html",
         active_orders=active_orders,
         completed_orders=completed_orders,
-        current_user=current_user  # <--- передаём сюда
+        current_user=current_user_data
     )
-
 
 
 @app.route("/history")
 def history():
     return "<h2>📜 История заказов</h2><a href='/dashboard'>Назад</a>"
 
+
 @app.route("/analytics")
 def analytics():
     if "user" not in session or users[session["user"]]["role"] != "Administrator":
         flash("⛔ Доступ запрещён!", "error")
         return redirect(url_for("dashboard"))
+
     return "<h2>📊 Аналитика блюд</h2><a href='/admin_dashboard'>Назад</a>"
+
 
 # --- ВЫХОД ---
 @app.route("/logout")
@@ -498,6 +504,8 @@ def logout():
     flash("Вы вышли из системы.", "info")
     return redirect(url_for("index"))
 
+
+# --- ЗАПУСК ПРИЛОЖЕНИЯ ---
 if __name__ == "__main__":
     print("🚀 ИС Столовая КГТУ запущена!")
     print("📍 Адрес: http://127.0.0.1:5000")
