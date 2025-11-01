@@ -19,6 +19,9 @@ users = {
     }
 }
 
+# --- Категории меню ---
+categories_list = ["Пицца", "Суши", "Бургеры", "Паста", "Салаты", "Напитки"]
+
 # --- Пример заказов ---
 orders_list = [
     {"id": 1, "dish": "Пицца Маргарита", "status": "Активен"},
@@ -28,12 +31,12 @@ orders_list = [
 
 # --- Меню блюд с категориями (в сомах) ---
 menu_items_list = [
-    {"id": 1, "name": "Пицца Маргарита", "price": 450, "category": "Пицца", "image": "🍕", "description": "Классическая пицца с томатным соусом и моцареллой"},
-    {"id": 2, "name": "Суши сет Самурай", "price": 1200, "category": "Суши", "image": "🍣", "description": "Ассорти из свежих суши и роллов"},
-    {"id": 3, "name": "Бургер Чеддер", "price": 350, "category": "Бургеры", "image": "🍔", "description": "Сочный бургер с сыром чеддер и овощами"},
-    {"id": 4, "name": "Паста Карбонара", "price": 420, "category": "Паста", "image": "🍝", "description": "Итальянская паста с беконом и соусом"},
-    {"id": 5, "name": "Салат Цезарь", "price": 280, "category": "Салаты", "image": "🥗", "description": "Классический салат с курицей и соусом цезарь"},
-    {"id": 6, "name": "Кола", "price": 120, "category": "Напитки", "image": "🥤", "description": "Освежающий газированный напиток"},
+    {"id": 1, "name": "Пицца Маргарита", "price": 450, "category": "Пицца", "image": "🍕", "description": "Классическая пицца с томатным соусом и моцареллой", "hidden": False},
+    {"id": 2, "name": "Суши сет Самурай", "price": 1200, "category": "Суши", "image": "🍣", "description": "Ассорти из свежих суши и роллов", "hidden": False},
+    {"id": 3, "name": "Бургер Чеддер", "price": 350, "category": "Бургеры", "image": "🍔", "description": "Сочный бургер с сыром чеддер и овощами", "hidden": False},
+    {"id": 4, "name": "Паста Карбонара", "price": 420, "category": "Паста", "image": "🍝", "description": "Итальянская паста с беконом и соусом", "hidden": False},
+    {"id": 5, "name": "Салат Цезарь", "price": 280, "category": "Салаты", "image": "🥗", "description": "Классический салат с курицей и соусом цезарь", "hidden": False},
+    {"id": 6, "name": "Кола", "price": 120, "category": "Напитки", "image": "🥤", "description": "Освежающий газированный напиток", "hidden": False},
 ]
 
 # --- Хранилища данных ---
@@ -49,7 +52,7 @@ def get_next_id():
 
 
 def get_categories():
-    return list(set(item['category'] for item in menu_items_list))
+    return categories_list
 
 
 # --- ГЛАВНАЯ СТРАНИЦА ---
@@ -162,7 +165,7 @@ def menu():
     category = request.args.get('category', '')
     search = request.args.get('search', '')
 
-    filtered_items = menu_items_list
+    filtered_items = [item for item in menu_items_list if not item.get("hidden", False)]
     if category:
         filtered_items = [item for item in filtered_items if item['category'] == category]
     if search:
@@ -425,46 +428,104 @@ def complete(order_id):
 # --- УПРАВЛЕНИЕ МЕНЮ ---
 @app.route("/manage_menu", methods=["GET", "POST"])
 def manage_menu():
+    # Проверка прав
     if "user" not in session or users[session["user"]]["role"] != "Administrator":
         flash("⛔ Доступ запрещён!", "error")
         return redirect(url_for("dashboard"))
 
-    if request.method == "POST":
-        action = request.form.get("action")
-        item_id = request.form.get("id")
-        name = request.form.get("name")
-        price = request.form.get("price")
-        category = request.form.get("category")
-        description = request.form.get("description")
+    # Если только зашли на страницу (GET), сразу отображаем HTML
+    if request.method == "GET":
+        categories = get_categories()
+        return render_template("manage_menu.html", menu_items=menu_items_list, categories=categories)
 
-        if action == "add":
-            new_item = {
-                "id": get_next_id(),
-                "name": name,
-                "price": float(price),
-                "category": category,
-                "image": "🍽️",
-                "description": description
-            }
-            menu_items_list.append(new_item)
-            flash(f"Блюдо '{name}' добавлено!", "success")
+    # Если POST — начинаем разбирать форму
+    action = request.form.get("action")
+    item_id = request.form.get("id")
+    name = (request.form.get("name") or "").strip()
+    price = request.form.get("price")
+    category = request.form.get("category")
+    new_category = (request.form.get("new_category") or "").strip()
+    description = (request.form.get("description") or "").strip()
 
-        elif action == "edit":
-            for item in menu_items_list:
-                if str(item["id"]) == item_id:
-                    item["name"] = name
+    # --- 1. Обработка новой категории ---
+    if category == "new":
+        if not new_category:
+            flash("Введите название новой категории!", "error")
+            return redirect(url_for("manage_menu"))
+        elif new_category in categories_list:
+            flash(f"Категория '{new_category}' уже существует!", "error")
+            return redirect(url_for("manage_menu"))
+        else:
+            categories_list.append(new_category)
+            category = new_category
+            flash(f"Категория '{new_category}' успешно добавлена!", "success")
+
+    # --- 2. Добавление блюда ---
+    if action == "add":
+        # Проверка на дубликаты по названию блюда
+        for item in menu_items_list:
+            if item["name"].strip().lower() == name.lower():
+                flash(f"Блюдо '{name}' уже существует!", "error")
+                return redirect(url_for("manage_menu"))
+
+        try:
+            price_val = float(price)
+        except (ValueError, TypeError):
+            flash("Неверное значение цены!", "error")
+            return redirect(url_for("manage_menu"))
+
+        new_item = {
+            "id": get_next_id(),
+            "name": name,
+            "price": price_val,
+            "category": category,
+            "description": description,
+            "hidden": False
+        }
+        menu_items_list.append(new_item)
+        flash(f"✅ Блюдо '{name}' добавлено!", "success")
+
+    # --- 3. Редактирование блюда ---
+    elif action == "edit":
+        for item in menu_items_list:
+            if str(item["id"]) == item_id:
+                # Проверка: изменяем имя → не должно совпадать с другим блюдом
+                for other in menu_items_list:
+                    if other["id"] != item["id"] and other["name"].lower() == name.lower():
+                        flash(f"Блюдо с названием '{name}' уже существует!", "error")
+                        return redirect(url_for("manage_menu"))
+
+                item["name"] = name
+                item["category"] = category
+                item["description"] = description
+                try:
                     item["price"] = float(price)
-                    item["category"] = category
-                    item["description"] = description
-                    flash(f"Блюдо '{name}' обновлено!", "success")
+                except:
+                    pass
+                flash(f"✏️ Блюдо '{item['name']}' обновлено!", "success")
+                break
 
-        elif action == "delete":
-            menu_items_list[:] = [item for item in menu_items_list if str(item["id"]) != item_id]
-            flash("Блюдо удалено!", "info")
+
+    elif action == "delete":
+        menu_items_list[:] = [item for item in menu_items_list if str(item["id"]) != item_id]
+        flash("Блюдо удалено!", "info")
+
+    elif action == "hide":
+        for item in menu_items_list:
+            if str(item["id"]) == item_id:
+                item["hidden"] = True
+                flash(f"✅ Блюдо '{item['name']}' скрыто!", "info")
+                break
+
+    elif action == "show":
+        for item in menu_items_list:
+            if str(item["id"]) == item_id:
+                item["hidden"] = False
+                flash(f"✅ Блюдо '{item['name']}' снова отображается!", "success")
+                break
 
     categories = get_categories()
-    return render_template("manage_menu.html", menu_items=menu_items_list, categories=categories)
-
+    return redirect(url_for("manage_menu"))
 
 # --- СТРАНИЦЫ ЗАКАЗОВ ---
 @app.route("/orders")
