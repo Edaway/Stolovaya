@@ -1,5 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_login import current_user
+import os
+import sqlite3
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(BASE_DIR, "database.db")
+
+conn = sqlite3.connect(db_path)
 
 # --- Инициализация Flask ---
 app = Flask(__name__)
@@ -339,6 +346,13 @@ def checkout():
         flash('Корзина пуста!', 'error')
         return redirect(url_for('cart'))
 
+    # --- СПИСАНИЕ ПРОДУКТОВ ---
+    order = next((o for o in active_orders if o["id"] == order_id), None)
+    if order:
+        for item in order["items"]:
+            deduct_ingredients(item["id"], item["quantity"])
+    # --------------------------
+
     flash(f'✅ Заказ #{order_id} успешно оформлен и отправлен в активные!', 'success')
     return redirect(url_for('orders_page'))
 
@@ -423,6 +437,26 @@ def complete(order_id):
             break
 
     return redirect(url_for("orders_page"))
+
+def deduct_ingredients(dish_id, count):
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+
+    # Загружаем рецепт блюда
+    cur.execute("SELECT product_id, amount FROM recipes WHERE dish_id = ?", (dish_id,))
+    recipe = cur.fetchall()
+
+    # Списываем
+    for pid, amount in recipe:
+        cur.execute("""
+            UPDATE products 
+            SET quantity = quantity - ?
+            WHERE id = ?
+        """, (amount * count, pid))
+
+    conn.commit()
+    conn.close()
+
 
 
 # --- УПРАВЛЕНИЕ МЕНЮ ---
@@ -556,6 +590,98 @@ def analytics():
         return redirect(url_for("dashboard"))
 
     return "<h2>📊 Аналитика блюд</h2><a href='/admin_dashboard'>Назад</a>"
+
+@app.route("/warehouse", methods=["GET", "POST"])
+def warehouse():
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        # Добавление нового продукта
+        if action == "add_product":
+            name = request.form["name"]
+            qty = float(request.form["quantity"])
+            unit = request.form["unit"]
+            cur.execute("INSERT INTO products (name, quantity, unit) VALUES (?, ?, ?)",
+                        (name, qty, unit))
+
+        # Приход товара
+        elif action == "add_stock":
+            pid = request.form["product_id"]
+            qty = float(request.form["quantity"])
+            cur.execute("UPDATE products SET quantity = quantity + ? WHERE id = ?", (qty, pid))
+
+        # Ручное списание
+        elif action == "remove_stock":
+            pid = request.form["product_id"]
+            qty = float(request.form["quantity"])
+            cur.execute("UPDATE products SET quantity = quantity - ? WHERE id = ?", (qty, pid))
+
+        elif action == "delete_product":
+            pid = request.form["product_id"]
+            cur.execute("DELETE FROM products WHERE id = ?", (pid,))
+            flash("Продукт удалён!", "info")
+
+
+        conn.commit()
+
+    cur.execute("SELECT id, name, quantity, unit FROM products")
+    products = cur.fetchall()
+
+    conn.close()
+    return render_template("warehouse.html", products=products)
+
+@app.route("/recipe_editor/<int:dish_id>", methods=["GET", "POST"])
+def recipe_editor(dish_id):
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+
+    # Получаем блюдо из menu_items_list
+    dish = next((item for item in menu_items_list if item["id"] == dish_id), None)
+    if dish is None:
+        flash("Блюдо не найдено!", "error")
+        return redirect(url_for("manage_menu"))
+    dish_name = dish["name"]
+
+    if request.method == "POST":
+        # Удаляем старый рецепт
+        cur.execute("DELETE FROM recipes WHERE dish_id = ?", (dish_id,))
+
+        # Добавляем новый рецепт
+        for pid, amount in request.form.items():
+            if not amount or float(amount) <= 0:
+                continue
+            cur.execute(
+                "INSERT INTO recipes (dish_id, product_id, amount) VALUES (?, ?, ?)",
+                (dish_id, pid, float(amount))
+            )
+
+        conn.commit()
+        flash("Рецепт обновлён", "success")
+        return redirect(url_for("recipe_editor", dish_id=dish_id))
+
+    # Загружаем продукты
+    cur.execute("SELECT id, name, unit FROM products")
+    products = cur.fetchall()
+
+    # Загружаем текущий рецепт
+    cur.execute("SELECT product_id, amount FROM recipes WHERE dish_id = ?", (dish_id,))
+    recipe = dict(cur.fetchall())  # {product_id: amount}
+
+    conn.close()
+
+    return render_template("recipe_editor.html", products=products, recipe=recipe, dish_name=dish_name)
+
+@app.route("/products")
+def show_products():
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM products")
+    products = cur.fetchall()
+    conn.close()
+    return render_template("products.html", products=products)
 
 
 # --- ВЫХОД ---
