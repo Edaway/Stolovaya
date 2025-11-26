@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Оформление заказа — Столовая КГТУ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { 
+            font-family: "Segoe UI", sans-serif; 
+            background: #f3f4f7; 
+            min-height: 100vh;
+            padding-top: 20px;
+        }
+        .card-preorder { 
+            background: white; 
+            border-radius: 15px; 
+            padding: 2rem; 
+            margin-bottom: 2rem; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+        }
+        .btn-now { 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            font-size: 1.2rem; 
+            font-weight: bold;
+            padding: 15px;
+        }
+        .btn-now:hover { 
+            background: #218838; 
+            color: white;
+        }
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            color: #6c757d;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="mb-4 text-center">📦 Оформление заказа</h1>
+
+            {% if cart_items %}
+            <div class="card-preorder">
+                <h4 class="mb-3">Состав заказа</h4>
+                <ul class="list-group mb-4">
+                    {% for item in cart_items %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ item.name }}</strong>
+                            <br>
+                            <small class="text-muted">Количество: {{ item.quantity }}</small>
+                        </div>
+                        <span class="fw-bold">{{ item.total }} сом</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Итого:</h5>
+                    <h4 class="mb-0 text-primary">{{ total_price }} сом</h4>
+                </div>
+
+                <!-- БОЛЬШАЯ КНОПКА ЗАБРАТЬ СЕЙЧАС -->
+                <div class="mb-4 p-3 border rounded bg-success bg-opacity-10">
+                    <h5 class="text-center mb-3">🚀 Забрать сразу</h5>
+                    <form method="POST" action="{{ url_for('checkout') }}">
+                        <button type="submit" class="btn btn-now w-100">
+                            ЗАБРАТЬ СЕЙЧАС
+                        </button>
+                    </form>
+                    <p class="text-center text-muted mt-2 mb-0">Заказ будет приготовлен в ближайшее время</p>
+                </div>
+
+                <div class="divider">— ИЛИ —</div>
+
+                <!-- ПРЕДЗАКАЗ -->
+                <div class="p-3 border rounded">
+                    <h5 class="text-center mb-3">⏰ Предзаказ на другое время</h5>
+                    <form method="POST" action="{{ url_for('create_preorder') }}">
+                        <div class="mb-3">
+                            <label for="date" class="form-label">Дата получения</label>
+                            <input type="date" class="form-control" name="date" id="date" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="time" class="form-label">Время получения</label>
+                            <input type="time" class="form-control" name="time" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            ✅ Подтвердить предзаказ
+                        </button>
+                    </form>
+                </div>
+
+                <a href="{{ url_for('menu') }}" class="btn btn-outline-secondary w-100 mt-3">
+                    ← Продолжить покупки
+                </a>
+            </div>
+            {% else %}
+            <div class="card-preorder text-center py-5">
+                <h3>Корзина пуста</h3>
+                <p class="text-muted">Добавьте товары из меню чтобы сделать заказ</p>
+                <a href="{{ url_for('menu') }}" class="btn btn-primary mt-3">Перейти в меню</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Устанавливаем минимальную дату - сегодня
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('date');
+        if (dateInput) {
+            dateInput.min = today;
+        }
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

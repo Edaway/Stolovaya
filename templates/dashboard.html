@@ -154,7 +154,7 @@
             </div>
         </div>
 
-        <!-- Корзина -->
+      <!-- Корзина с предзаказом -->
         <div class="row mt-4">
             <div class="col-12">
                 <div class="card p-4">
@@ -176,14 +176,37 @@
                             </div>
                             {% endfor %}
                         </div>
+
+                        <!-- Итого и форма предзаказа -->
                         <div class="row mt-3">
                             <div class="col-12">
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h5 class="mb-0">Итого: {{ total_price }} сом</h5>
-                                    <a href="{{ url_for('cart') }}" class="btn btn-primary">
-                                        <i class="bi bi-cart-check me-2"></i>Перейти к корзине
-                                    </a>
                                 </div>
+
+                                <!-- КНОПКА ЗАБРАТЬ СЕЙЧАС -->
+                                <form method="POST" action="{{ url_for('checkout') }}" class="mb-3">
+                                    <button type="submit" class="btn btn-success w-100 py-2">
+                                        <i class="bi bi-lightning me-2"></i>ЗАБРАТЬ СЕЙЧАС
+                                    </button>
+                                </form>
+
+                                <!-- Форма выбора даты и времени для предзаказа -->
+                                <form method="POST" action="{{ url_for('create_preorder') }}">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="date" class="form-label">Дата получения</label>
+                                            <input type="date" class="form-control" name="date" value="{{ today }}" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="time" class="form-label">Время получения</label>
+                                            <input type="time" class="form-control" name="time" required>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary mt-3 w-100">
+                                        <i class="bi bi-clock me-2"></i>Подтвердить предзаказ
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     {% else %}

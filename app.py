@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
-from flask_login import current_user
 import os
 import sqlite3
+from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.join(BASE_DIR, "database.db")
@@ -51,16 +51,36 @@ favorites = {}      # Избранное пользователей
 carts = {}          # Корзины пользователей
 active_orders = []  # Активные заказы
 completed_orders = []  # Завершённые заказы
-
+pre_orders = []     # Предзаказы
 
 # --- Вспомогательные функции ---
 def get_next_id():
     return max([item['id'] for item in menu_items_list], default=0) + 1
 
-
 def get_categories():
     return categories_list
 
+def get_user_orders(user_email):
+    """Получить все заказы пользователя"""
+    user_orders = []
+    
+    # Активные заказы
+    for order in active_orders:
+        if order["user"] == user_email:
+            user_orders.append({**order, "type": "active"})
+    
+    # Предзаказы
+    for order in pre_orders:
+        if order["user"] == user_email:
+            user_orders.append({**order, "type": "preorder"})
+    
+    # Завершенные заказы
+    for order in completed_orders:
+        if order["user"] == user_email:
+            user_orders.append({**order, "type": "completed"})
+    
+    # Сортируем по ID в обратном порядке (новые сверху)
+    return sorted(user_orders, key=lambda x: x["id"], reverse=True)
 
 # --- ГЛАВНАЯ СТРАНИЦА ---
 @app.route("/", methods=["GET", "POST"])
@@ -93,7 +113,6 @@ def index():
                 flash("Неверный email или пароль!", "error")
 
     return render_template("index.html")
-
 
 # --- ЛИЧНЫЙ КАБИНЕТ ---
 @app.route("/dashboard")
@@ -142,7 +161,6 @@ def dashboard():
         total_price=total_price
     )
 
-
 # --- АДМИН-ПАНЕЛЬ ---
 @app.route("/admin_dashboard")
 def admin_dashboard():
@@ -160,7 +178,6 @@ def admin_dashboard():
         orders_list=orders_list,
         users=users
     )
-
 
 # --- МЕНЮ БЛЮД ---
 @app.route("/menu")
@@ -194,7 +211,6 @@ def menu():
         user_favorites=user_favorites
     )
 
-
 # --- ИЗБРАННОЕ ---
 @app.route("/toggle_favorite/<int:item_id>")
 def toggle_favorite(item_id):
@@ -214,7 +230,6 @@ def toggle_favorite(item_id):
         flash("Блюдо добавлено в избранное!", "success")
 
     return redirect(request.referrer or url_for('menu'))
-
 
 # --- КОРЗИНА ---
 @app.route("/cart")
@@ -239,7 +254,6 @@ def cart():
                 break
 
     return render_template("cart.html", cart_items=cart_items, total_price=total_price)
-
 
 # --- ДОБАВЛЕНИЕ В КОРЗИНУ ---
 @app.route("/add_to_cart/<int:item_id>", methods=["GET", "POST"])
@@ -276,7 +290,6 @@ def remove_from_cart(item_id):
 
     return redirect(url_for('cart'))
 
-
 # --- ОБНОВЛЕНИЕ КОЛИЧЕСТВА В КОРЗИНЕ ---
 @app.route("/update_cart/<int:item_id>", methods=["POST"])
 def update_cart(item_id):
@@ -295,7 +308,6 @@ def update_cart(item_id):
 
     return redirect(url_for('cart'))
 
-
 # --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: СОЗДАТЬ ЗАКАЗ ИЗ КОРЗИНЫ ---
 def create_order_from_cart(user_email):
     user_cart = carts.get(user_email, {})
@@ -307,7 +319,8 @@ def create_order_from_cart(user_email):
         "user": user_email,
         "items": [],
         "total": 0,
-        "status": "Активен"
+        "status": "Активен",
+        "created_at": datetime.now().isoformat()  # Добавляем время создания
     }
 
     total_price = 0
@@ -332,7 +345,6 @@ def create_order_from_cart(user_email):
 
     return order["id"]
 
-
 # --- ОФОРМЛЕНИЕ ЗАКАЗА ---
 @app.route('/checkout', methods=['POST'])
 def checkout():
@@ -347,16 +359,14 @@ def checkout():
         return redirect(url_for('cart'))
 
     # --- СПИСАНИЕ ПРОДУКТОВ ---
-    order = next((o for o in active_orders if o["id"] == order_id), None)
-    if order:
-        for item in order["items"]:
-            deduct_ingredients(item["id"], item["quantity"])
+    #order = next((o for o in active_orders if o["id"] == order_id), None)
+    #if order:
+    #    for item in order["items"]:
+    #        deduct_ingredients(item["id"], item["quantity"])
     # --------------------------
 
     flash(f'✅ Заказ #{order_id} успешно оформлен и отправлен в активные!', 'success')
     return redirect(url_for('orders_page'))
-
-
 # --- ПОДТВЕРЖДЕНИЕ ЗАКАЗА ---
 @app.route("/confirm_order", methods=["POST"])
 def confirm_order():
@@ -375,7 +385,8 @@ def confirm_order():
         "user": user_email,
         "items": [],
         "total": 0,
-        "status": "Активен"
+        "status": "Активен",
+        "created_at": datetime.now().isoformat()  # Добавляем время создания
     }
 
     total_price = 0
@@ -397,7 +408,6 @@ def confirm_order():
     flash("✅ Заказ подтверждён и отправлен в активные!", "success")
     return redirect(url_for("orders_page"))
 
-
 # --- БЫСТРАЯ ПРОДАЖА ---
 @app.route("/quick_sale", methods=["POST"])
 def quick_sale():
@@ -417,13 +427,13 @@ def quick_sale():
         "user": session["user"],
         "items": [{"name": name, "quantity": 1, "price": price, "total": price}],
         "total": price,
-        "status": "Активен"
+        "status": "Активен",
+        "created_at": datetime.now().isoformat()  # Добавляем время создания
     }
 
     active_orders.append(order)
     flash(f"💸 Быстрая продажа: {name} ({price} сом) добавлена в активные заказы!", "success")
     return redirect(url_for("orders_page"))
-
 
 # --- ВЫДАЧА ЗАКАЗА ---
 @app.route("/complete/<int:order_id>")
@@ -456,8 +466,6 @@ def deduct_ingredients(dish_id, count):
 
     conn.commit()
     conn.close()
-
-
 
 # --- УПРАВЛЕНИЕ МЕНЮ ---
 @app.route("/manage_menu", methods=["GET", "POST"])
@@ -539,7 +547,6 @@ def manage_menu():
                 flash(f"✏️ Блюдо '{item['name']}' обновлено!", "success")
                 break
 
-
     elif action == "delete":
         menu_items_list[:] = [item for item in menu_items_list if str(item["id"]) != item_id]
         flash("Блюдо удалено!", "info")
@@ -577,19 +584,139 @@ def orders_page():
         current_user=current_user_data
     )
 
-
+# --- ИСТОРИЯ ЗАКАЗОВ ---
 @app.route("/history")
 def history():
-    return "<h2>📜 История заказов</h2><a href='/dashboard'>Назад</a>"
+    if "user" not in session:
+        flash("Сначала войдите в систему!", "error")
+        return redirect(url_for("index"))
 
+    user_email = session["user"]
+    user_orders = get_user_orders(user_email)
+    
+    return render_template("history.html", orders=user_orders)
 
-@app.route("/analytics")
-def analytics():
-    if "user" not in session or users[session["user"]]["role"] != "Administrator":
-        flash("⛔ Доступ запрещён!", "error")
-        return redirect(url_for("dashboard"))
+# --- СТРАНИЦА ПРЕДЗАКАЗА ---
+@app.route("/preorder")
+def preorder_page():
+    if "user" not in session:
+        flash("Сначала войдите в систему!", "error")
+        return redirect(url_for("index"))
 
-    return "<h2>📊 Аналитика блюд</h2><a href='/admin_dashboard'>Назад</a>"
+    user_email = session["user"]
+    user_cart = carts.get(user_email, {})
+    cart_items = []
+    total_price = 0
+
+    for item_id, quantity in user_cart.items():
+        for item in menu_items_list:
+            if item["id"] == item_id:
+                cart_item = item.copy()
+                cart_item["quantity"] = quantity
+                cart_item["total"] = item["price"] * quantity
+                cart_items.append(cart_item)
+                total_price += cart_item["total"]
+                break
+
+    return render_template(
+        "preorder.html",
+        cart_items=cart_items,
+        total_price=total_price
+    )
+
+# --- СОЗДАНИЕ ПРЕДЗАКАЗА ---
+@app.route("/create_preorder", methods=["POST"])
+def create_preorder():
+    if "user" not in session:
+        flash("Сначала войдите в систему!", "error")
+        return redirect(url_for("index"))
+
+    user_email = session["user"]
+    user_cart = carts.get(user_email, {})
+    
+    if not user_cart:
+        flash("Корзина пуста!", "error")
+        return redirect(url_for("cart"))
+
+    date = request.form.get("date")
+    time = request.form.get("time")
+    
+    if not date or not time:
+        flash("Укажите дату и время получения!", "error")
+        return redirect(url_for("preorder_page"))
+
+    # ПРОВЕРКА ДАТЫ - ДОБАВЛЕНО!
+    try:
+        selected_date = datetime.strptime(date, '%Y-%m-%d').date()
+        today = datetime.now().date()
+        if selected_date < today:
+            flash("Нельзя выбрать прошедшую дату!", "error")
+            return redirect(url_for('preorder_page'))
+    except ValueError:
+        flash("Неверный формат даты!", "error")
+        return redirect(url_for('preorder_page'))
+
+    # Создаем предзаказ
+    order = {
+        "id": len(active_orders) + len(completed_orders) + len(pre_orders) + 1,
+        "user": user_email,
+        "items": [],
+        "total": 0,
+        "status": "Предзаказ",
+        "date": date,
+        "time": time,
+        "created_at": datetime.now().isoformat()
+    }
+
+    total_price = 0
+    for item_id, quantity in user_cart.items():
+        for item in menu_items_list:
+            if item["id"] == item_id:
+                order["items"].append({
+                    "name": item["name"],
+                    "quantity": quantity,
+                    "price": item["price"],
+                    "total": item["price"] * quantity
+                })
+                total_price += item["price"] * quantity
+                break
+
+    order["total"] = total_price
+    pre_orders.append(order)
+    carts[user_email] = {}  # очищаем корзину
+    
+    flash(f"✅ Предзаказ #{order['id']} создан на {date} в {time}!", "success")
+    return redirect(url_for("history"))
+
+# --- ОТМЕНА ЗАКАЗА ---
+@app.route("/cancel_order/<int:order_id>")
+def cancel_order(order_id):
+    if "user" not in session:
+        flash("Сначала войдите в систему!", "error")
+        return redirect(url_for("index"))
+
+    user_email = session["user"]
+    
+    # Ищем в активных заказах
+    for order in active_orders:
+        if order["id"] == order_id and order["user"] == user_email:
+            order["status"] = "Отменен"
+            completed_orders.append(order)
+            active_orders.remove(order)
+            flash(f"❌ Заказ #{order_id} отменен!", "info")
+            return redirect(url_for("history"))
+    
+    # Ищем в предзаказах
+    for order in pre_orders:
+        if order["id"] == order_id and order["user"] == user_email:
+            order["status"] = "Отменен"
+            completed_orders.append(order)
+            pre_orders.remove(order)
+            flash(f"❌ Предзаказ #{order_id} отменен!", "info")
+            return redirect(url_for("history"))
+    
+    flash("Заказ не найден или у вас нет прав для его отмены!", "error")
+    return redirect(url_for("history"))
 
 @app.route("/warehouse", methods=["GET", "POST"])
 def warehouse():
@@ -623,7 +750,6 @@ def warehouse():
             pid = request.form["product_id"]
             cur.execute("DELETE FROM products WHERE id = ?", (pid,))
             flash("Продукт удалён!", "info")
-
 
         conn.commit()
 
@@ -683,6 +809,13 @@ def show_products():
     conn.close()
     return render_template("products.html", products=products)
 
+@app.route("/analytics")
+def analytics():
+    if "user" not in session or users[session["user"]]["role"] != "Administrator":
+        flash("⛔ Доступ запрещён!", "error")
+        return redirect(url_for("dashboard"))
+
+    return "<h2>📊 Аналитика блюд</h2><a href='/admin_dashboard'>Назад</a>"
 
 # --- ВЫХОД ---
 @app.route("/logout")
@@ -690,7 +823,6 @@ def logout():
     session.pop("user", None)
     flash("Вы вышли из системы.", "info")
     return redirect(url_for("index"))
-
 
 # --- ЗАПУСК ПРИЛОЖЕНИЯ ---
 if __name__ == "__main__":
