@@ -22,3 +22,11 @@ CREATE TABLE IF NOT EXISTS recipes (
     FOREIGN KEY (dish_id) REFERENCES dishes(id),
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
+
+CREATE TABLE IF NOT EXISTS dish_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dish_name TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    total_price REAL NOT NULL,
+    sold_at TEXT NOT NULL
+);

@@ -809,13 +809,62 @@ def show_products():
     conn.close()
     return render_template("products.html", products=products)
 
+def save_order_to_analytics(order):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    for item in order["items"]:
+        cursor.execute("""
+            INSERT INTO dish_stats (dish_name, quantity, total_price, sold_at)
+            VALUES (?, ?, ?, ?)
+        """, (
+            item["name"],
+            item["quantity"],
+            item["total"],
+            datetime.now().isoformat()
+        ))
+
+    conn.commit()
+    conn.close()
+
+@app.route("/complete_order/<int:order_id>")
+def complete_order(order_id):
+    # ищем заказ
+    for order in active_orders:
+        if order["id"] == order_id:
+            active_orders.remove(order)
+            order["status"] = "Завершён"
+
+            # 👉 сохраняем блюда в аналитику
+            save_order_to_analytics(order)
+
+            completed_orders.append(order)
+            flash("Заказ выдан!", "success")
+            return redirect(url_for("orders"))
+
+    flash("Заказ не найден!", "error")
+    return redirect(url_for("orders"))
+
+
 @app.route("/analytics")
 def analytics():
     if "user" not in session or users[session["user"]]["role"] != "Administrator":
         flash("⛔ Доступ запрещён!", "error")
         return redirect(url_for("dashboard"))
 
-    return "<h2>📊 Аналитика блюд</h2><a href='/admin_dashboard'>Назад</a>"
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+
+    cur.execute("SELECT dish_name, quantity, total_price, sold_at FROM dish_stats ORDER BY sold_at DESC")
+    stats = [
+        {"dish_name": row[0], "quantity": row[1], "total_price": row[2], "sold_at": row[3]}
+        for row in cur.fetchall()
+    ]
+    conn.close()
+
+    return render_template("analytics.html", stats=stats)
+
+
 
 # --- ВЫХОД ---
 @app.route("/logout")
