@@ -408,6 +408,24 @@ def confirm_order():
     flash("✅ Заказ подтверждён и отправлен в активные!", "success")
     return redirect(url_for("orders_page"))
 
+def save_order_to_analytics(order):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    for item in order["items"]:
+        cursor.execute("""
+            INSERT INTO dish_stats (dish_name, quantity, total_price, sold_at)
+            VALUES (?, ?, ?, ?)
+        """, (
+            item["name"],
+            item["quantity"],
+            item["total"],
+            datetime.now().isoformat()
+        ))
+
+    conn.commit()
+    conn.close()
+
 # --- БЫСТРАЯ ПРОДАЖА ---
 @app.route("/quick_sale", methods=["POST"])
 def quick_sale():
@@ -435,18 +453,25 @@ def quick_sale():
     flash(f"💸 Быстрая продажа: {name} ({price} сом) добавлена в активные заказы!", "success")
     return redirect(url_for("orders_page"))
 
-# --- ВЫДАЧА ЗАКАЗА ---
 @app.route("/complete/<int:order_id>")
 def complete(order_id):
+    # ищем заказ
     for order in active_orders:
         if order["id"] == order_id:
-            order["status"] = "Доставлен"
-            completed_orders.append(order)
             active_orders.remove(order)
-            flash(f"🚚 Заказ #{order_id} отмечен как доставленный!", "info")
-            break
+            order["status"] = "Завершён"
 
+            # 👉 сохраняем блюда в аналитику
+            save_order_to_analytics(order)
+
+            completed_orders.append(order)
+            flash("Заказ выдан!", "success")
+            return redirect(url_for("orders_page"))
+
+    flash("Заказ не найден!", "error")
     return redirect(url_for("orders_page"))
+
+
 
 def deduct_ingredients(dish_id, count):
     conn = sqlite3.connect("database.db")
@@ -809,61 +834,76 @@ def show_products():
     conn.close()
     return render_template("products.html", products=products)
 
-def save_order_to_analytics(order):
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    for item in order["items"]:
-        cursor.execute("""
-            INSERT INTO dish_stats (dish_name, quantity, total_price, sold_at)
-            VALUES (?, ?, ?, ?)
-        """, (
-            item["name"],
-            item["quantity"],
-            item["total"],
-            datetime.now().isoformat()
-        ))
-
-    conn.commit()
-    conn.close()
-
-@app.route("/complete_order/<int:order_id>")
-def complete_order(order_id):
-    # ищем заказ
-    for order in active_orders:
-        if order["id"] == order_id:
-            active_orders.remove(order)
-            order["status"] = "Завершён"
-
-            # 👉 сохраняем блюда в аналитику
-            save_order_to_analytics(order)
-
-            completed_orders.append(order)
-            flash("Заказ выдан!", "success")
-            return redirect(url_for("orders"))
-
-    flash("Заказ не найден!", "error")
-    return redirect(url_for("orders"))
-
-
 @app.route("/analytics")
 def analytics():
     if "user" not in session or users[session["user"]]["role"] != "Administrator":
         flash("⛔ Доступ запрещён!", "error")
         return redirect(url_for("dashboard"))
 
+    date_from = request.args.get("date_from")
+    date_to = request.args.get("date_to")
+
     conn = sqlite3.connect("database.db")
     cur = conn.cursor()
 
-    cur.execute("SELECT dish_name, quantity, total_price, sold_at FROM dish_stats ORDER BY sold_at DESC")
-    stats = [
-        {"dish_name": row[0], "quantity": row[1], "total_price": row[2], "sold_at": row[3]}
-        for row in cur.fetchall()
-    ]
+    query = "SELECT dish_name, quantity, total_price, sold_at FROM dish_stats WHERE 1=1"
+    params = []
+
+    if date_from:
+        query += " AND date(sold_at) >= date(?)"
+        params.append(date_from)
+
+    if date_to:
+        query += " AND date(sold_at) <= date(?)"
+        params.append(date_to)
+
+    query += " ORDER BY sold_at DESC"
+
+    cur.execute(query, params)
+    rows = cur.fetchall()
+
+    stats = [{
+        "dish_name": r[0],
+        "quantity": r[1],
+        "total_price": r[2],
+        "sold_at": r[3][:10]
+    } for r in rows]
+
+    # Общая выручка и количество
+    total_income = sum(r["total_price"] for r in stats)
+    total_qty = sum(r["quantity"] for r in stats)
+
+    # ТОП-5 блюд
+    cur.execute("""
+        SELECT dish_name, SUM(quantity) as qty
+        FROM dish_stats
+        GROUP BY dish_name
+        ORDER BY qty DESC
+        LIMIT 5
+    """)
+    top_dishes = cur.fetchall()
+
+    # График продаж по дням
+    cur.execute("""
+        SELECT date(sold_at), SUM(total_price)
+        FROM dish_stats
+        GROUP BY date(sold_at)
+        ORDER BY date(sold_at)
+    """)
+    sales_by_day = cur.fetchall()
+
     conn.close()
 
-    return render_template("analytics.html", stats=stats)
-
+    return render_template(
+        "analytics.html",
+        stats=stats,
+        total_income=total_income,
+        total_qty=total_qty,
+        top_dishes=top_dishes,
+        sales_by_day=sales_by_day,
+        date_from=date_from,
+        date_to=date_to
+    )
 
 
 # --- ВЫХОД ---
