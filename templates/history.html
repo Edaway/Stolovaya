@@ -33,7 +33,7 @@
                 </span>
             </div>
             <div class="mt-2">
-                {% for item in order.items %}  <!-- ИСПРАВЛЕНО: убрал скобки -->
+                {% for item in order["items"] %}
                     {{ item.name }} × {{ item.quantity }} — {{ item.total }} сом<br>
                 {% endfor %}
             </div>
